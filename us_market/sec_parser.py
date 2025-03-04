@@ -130,3 +130,48 @@ class SECParser:
         print(summary)
         
         return df 
+
+    @staticmethod
+    def clean_and_organize_data(df):
+        """清理和組織 Form 4 交易數據"""
+        try:
+            # 1. 轉換日期格式
+            df['transaction_date'] = pd.to_datetime(df['transaction_date'])
+            df['filing_date'] = pd.to_datetime(df['filing_date'])
+            
+            # 2. 按時間排序
+            df = df.sort_values('transaction_date')
+            
+            # 3. 按月份分組
+            df['year_month'] = df['transaction_date'].dt.strftime('%Y-%m')
+            
+            # 4. 添加一些有用的統計
+            df['days_since_filing'] = (datetime.now() - df['transaction_date']).dt.days
+            
+            # 4. 計算每月統計
+            monthly_stats = df.groupby(['ticker', 'year_month']).agg({
+                'accession_number': 'count'  # 計算每月申報次數
+            }).reset_index()
+            
+            monthly_stats.columns = ['ticker', 'year_month', 'filing_count']
+            
+            # 5. 清理最終數據集
+            final_columns = [
+                'ticker',
+                'filing_date',
+                'transaction_date',
+                'form_type',
+                'accession_number',
+                'year_month',
+                'days_since_filing'
+            ]
+            clean_df = df[final_columns].copy()
+            
+            print("\nMonthly Filing Statistics:")
+            print(monthly_stats)
+            
+            return clean_df, monthly_stats
+            
+        except Exception as e:
+            print(f"Error cleaning data: {str(e)}")
+            return None, None 

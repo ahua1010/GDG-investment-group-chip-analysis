@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+import pandas as pd
 
 from utils.config import Config
 from utils.file_handler import FileHandler
@@ -34,31 +35,38 @@ def main():
         form4_collector = Form4Collector(email="test123@gmail.com")
         
         tickers = ["AAPL", "MSFT", "GOOGL"]  # 示例股票
+        all_transactions = []
         
-        successful_downloads = []
-        print("\n開始下載 Form 4 文件...")
-        force_update = False  # 設置為 True 則強制更新所有文件
+        print("開始獲取 Form 4 交易數據...")
         for ticker in tickers:
-            print(f"\n處理 {ticker} 的 Form 4 文件:")
-            if form4_collector.download_form4(ticker, force_update=force_update):
-                print(f"{ticker} Form 4 資料下載完成")
-                successful_downloads.append(ticker)
-            else:
-                print(f"警告: {ticker} 的 Form 4 文件下載失敗")
-        
-        print(f"\n成功下載的股票: {successful_downloads}")
-        if successful_downloads:
-            # 解析所有下載的文件
-            print(f"\n開始解析下載的文件，目錄: {form4_collector.save_path}")
-            parser = SECParser()
-            transactions_df = parser.process_form4_files(form4_collector.save_path)
-            
+            print(f"處理 {ticker} 的 Form 4 交易數據:")
+            transactions_df = form4_collector.get_form4_transactions(ticker)
             if transactions_df is not None:
-                # 保存解析結果
-                output_file = os.path.join(Config.US_MARKET_DIR, 
-                                          f"form4_transactions_{datetime.now().strftime('%Y%m%d')}.csv")
-                transactions_df.to_csv(output_file, index=False)
-                print(f"\nForm 4 交易數據已保存至: {output_file}")
+                print(f"{ticker} Form 4 資料獲取完成")
+                all_transactions.append(transactions_df)
+            else:
+                print(f"警告: {ticker} 的 Form 4 資料獲取失敗")
+        
+        if all_transactions:
+            # 合併所有交易數據
+            transactions_df = pd.concat(all_transactions, ignore_index=True)
+            
+            # 清理和組織數據
+            clean_df, monthly_stats = SECParser.clean_and_organize_data(transactions_df)
+            
+            # 保存清理後的數據
+            clean_output_file = os.path.join(
+                Config.US_MARKET_DIR, 
+                f"form4_transactions_clean_{datetime.now().strftime('%Y%m%d')}.csv"
+            )
+            clean_df.to_csv(clean_output_file, index=False)
+            
+            # 保存月度統計
+            monthly_output_file = os.path.join(
+                Config.US_MARKET_DIR, 
+                f"form4_monthly_stats_{datetime.now().strftime('%Y%m%d')}.csv"
+            )
+            monthly_stats.to_csv(monthly_output_file, index=False)
     except Exception as e:
         print(f"Error in main: {str(e)}")
         raise

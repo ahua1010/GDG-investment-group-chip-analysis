@@ -20,123 +20,68 @@ class Form4Collector:
         self.email = email
         self.headers = {
             'User-Agent': f'{self.email}',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept': 'application/json',  # 改為接收 JSON
         }
         
         # 確保下載目錄存在
         os.makedirs(self.save_path, exist_ok=True)
     
-    def download_form4(self, ticker, num_filings=10, force_update=False):
-        """下載特定公司的 Form 4 文件"""
+    def get_form4_transactions(self, ticker, num_filings=10):
+        """直接獲取 Form 4 交易數據"""
         try:
-            # 首先獲取 CIK 號碼
+            # 獲取 CIK
             cik = self._get_cik(ticker)
             if not cik:
-                print(f"Could not find CIK for {ticker}")
-                return False
-            print(f"找到 {ticker} 的 CIK: {cik}")
+                return None
             
-            # 添加延遲
-            time.sleep(1)
-            
-            # 構建 SEC EDGAR 查詢 URL
-            base_url = f"https://www.sec.gov/cgi-bin/browse-edgar"
-            params = {
-                'CIK': cik,
-                'type': '4',
-                'count': num_filings,
-                'output': 'atom'
-            }
-            
-            # 獲取文件列表
-            print(f"正在獲取 {ticker} 的文件列表...")
-            response = requests.get(base_url, params=params, headers=self.headers)
+            # 使用正確的 SEC API 端點
+            url = f"https://data.sec.gov/submissions/CIK{cik}.json"
+            response = requests.get(url, headers=self.headers)
             if response.status_code != 200:
-                print(f"Error getting filing list for {ticker}: {response.status_code}")
-                return False
+                print(f"Error getting data for {ticker}: {response.status_code}")
+                return None
             
-            # 解析 XML 響應
-            root = ET.fromstring(response.content)
-            entries = root.findall('{http://www.w3.org/2005/Atom}entry')
-            print(f"找到 {len(entries)} 個 Form 4 文件")
+            data = response.json()
+            transactions = []
             
-            # 下載每個文件
-            downloaded_count = 0
-            skipped_count = 0
-            failed_count = 0
+            # 獲取最近的文件列表
+            recent_filings = data.get('filings', {}).get('recent', {})
+            if not recent_filings:
+                print(f"No filings found for {ticker}")
+                return None
             
-            for i, entry in enumerate(root.findall('{http://www.w3.org/2005/Atom}entry')):
-                # 獲取文件的詳細頁面鏈接
-                filing_detail = entry.find('{http://www.w3.org/2005/Atom}link').get('href')
-                
-                # 檢查是否已有該 ticker 的文件
-                existing_files = [f for f in os.listdir(self.save_path) 
-                                if f.startswith(f"form4_{ticker}_") and f.endswith(".xml")]
-                
-                # 如果已有足夠數量的文件且不需強制更新，則跳過
-                if len(existing_files) >= num_filings and not force_update:
-                    print(f"已有 {len(existing_files)} 個 {ticker} 的 Form 4 文件，跳過下載")
-                    return True
-                
-                # 從詳細頁面獲取實際的 Form 4 XML 文件鏈接
-                print(f"正在處理文件 {i + 1}/{len(entries)}...")
-                detail_response = requests.get(filing_detail, headers=self.headers)
-                if detail_response.status_code != 200:
-                    print(f"無法獲取詳細頁面: {filing_detail}")
-                    failed_count += 1
-                    continue
-                
-                # 從詳細頁面獲取實際的 XML 文件名
-                detail_text = detail_response.text
-                xml_link = None
-                
-                # 使用 BeautifulSoup 解析 HTML
-                soup = BeautifulSoup(detail_text, 'html.parser')
-                
-                # 尋找頁面中的完整欄位 XML 文件鏈接 (排除 XSL 轉換版本)
-                for table in soup.find_all('table'):
-                    for row in table.find_all('tr'):
-                        cells = row.find_all('td')
-                        for cell in cells:
-                            if cell.text and cell.text.strip() == "Complete submission text file":
-                                if cell.find_next_sibling('td') and cell.find_next_sibling('td').find('a'):
-                                    href = cell.find_next_sibling('td').find('a').get('href', '')
-                                    if href:
-                                        if not href.startswith('http'):
-                                            xml_link = f"https://www.sec.gov{href}"
-                                        else:
-                                            xml_link = href
-                                        print(f"找到完整提交文件: {xml_link}")
-                                        break
-                
-                # 如果找不到完整提交文件，嘗試獲取原始的 XML 文件 (排除 xslF345X05 路徑)
-                if not xml_link:
-                    for link in soup.find_all('a'):
-                        href = link.get('href', '')
-                        if '.xml' in href and 'xslF345X05' not in href:
-                            if not href.startswith('http'):
-                                xml_link = f"https://www.sec.gov{href}"
-                            else:
-                                xml_link = href
-                            print(f"找到原始 XML 文件: {xml_link}")
-                            break
-                
-                if xml_link:
-                    # 添加延遲以遵守 SEC 的訪問限制
-                    time.sleep(10)
-                    if self._download_filing(xml_link, ticker):
-                        downloaded_count += 1
-                else:
-                    print(f"Could not find Form 4 XML link for {ticker}")
-                    failed_count += 1
+            # 獲取各個數據列表
+            form_types = recent_filings.get('form', [])
+            filing_dates = recent_filings.get('filingDate', [])
+            accession_numbers = recent_filings.get('accessionNumber', [])
+            report_dates = recent_filings.get('reportDate', [])
             
-            print(f"成功下載 {downloaded_count} 個文件，跳過 {skipped_count} 個文件，失敗 {failed_count} 個文件")
-            return downloaded_count > 0
+            # 找到所有 Form 4 的索引
+            form4_indices = [i for i, form in enumerate(form_types) if form == '4'][:num_filings]
+            
+            # 收集交易數據
+            for idx in form4_indices:
+                trans_data = {
+                    'ticker': ticker,
+                    'filing_date': filing_dates[idx],
+                    'transaction_date': report_dates[idx],
+                    'form_type': form_types[idx],
+                    'accession_number': accession_numbers[idx]
+                }
+                transactions.append(trans_data)
+            
+            # 添加延遲以遵守 SEC 的速率限制
+            time.sleep(0.1)  # 100ms 延遲
+            
+            if not transactions:
+                print(f"No Form 4 transactions found for {ticker}")
+                return None
+            
+            return pd.DataFrame(transactions)
             
         except Exception as e:
-            print(f"Error downloading Form 4 for {ticker}: {str(e)}")
-            return False
+            print(f"Error fetching Form 4 data for {ticker}: {str(e)}")
+            return None
     
     def _get_cik(self, ticker):
         """獲取公司的 CIK 號碼"""
