@@ -1,0 +1,434 @@
+{
+    "transactions": [
+        {
+            "ticker": "AAPL",
+            "filing_date": "2025-02-27",
+            "transaction_date": "2025-02-25",
+            "form_type": "4",
+            "accession_number": "0000320193-25-000036",
+            "year_month": "2025-02",
+            "days_since_filing": 14,
+            "transaction_type": "BUY",
+            "shares": 1000,
+            "price_per_share": 150.0,
+            "total_value": 150000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "AAPL",
+            "filing_date": "2025-02-27",
+            "transaction_date": "2025-02-25",
+            "form_type": "4",
+            "accession_number": "0000320193-25-000035",
+            "year_month": "2025-02",
+            "days_since_filing": 14,
+            "transaction_type": "SELL",
+            "shares": 2000,
+            "price_per_share": 155.0,
+            "total_value": 310000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "AAPL",
+            "filing_date": "2025-02-27",
+            "transaction_date": "2025-02-25",
+            "form_type": "4",
+            "accession_number": "0000320193-25-000034",
+            "year_month": "2025-02",
+            "days_since_filing": 14,
+            "transaction_type": "BUY",
+            "shares": 3000,
+            "price_per_share": 160.0,
+            "total_value": 480000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "AAPL",
+            "filing_date": "2025-02-27",
+            "transaction_date": "2025-02-25",
+            "form_type": "4",
+            "accession_number": "0000320193-25-000033",
+            "year_month": "2025-02",
+            "days_since_filing": 14,
+            "transaction_type": "SELL",
+            "shares": 4000,
+            "price_per_share": 165.0,
+            "total_value": 660000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "AAPL",
+            "filing_date": "2025-02-27",
+            "transaction_date": "2025-02-25",
+            "form_type": "4",
+            "accession_number": "0000320193-25-000032",
+            "year_month": "2025-02",
+            "days_since_filing": 14,
+            "transaction_type": "BUY",
+            "shares": 5000,
+            "price_per_share": 170.0,
+            "total_value": 850000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "MSFT",
+            "filing_date": "2025-03-03",
+            "transaction_date": "2025-02-28",
+            "form_type": "4",
+            "accession_number": "0001062993-25-004149",
+            "year_month": "2025-02",
+            "days_since_filing": 11,
+            "transaction_type": "BUY",
+            "shares": 1000,
+            "price_per_share": 150.0,
+            "total_value": 150000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "MSFT",
+            "filing_date": "2025-03-03",
+            "transaction_date": "2025-02-28",
+            "form_type": "4",
+            "accession_number": "0001062993-25-004147",
+            "year_month": "2025-02",
+            "days_since_filing": 11,
+            "transaction_type": "SELL",
+            "shares": 2000,
+            "price_per_share": 155.0,
+            "total_value": 310000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "MSFT",
+            "filing_date": "2025-03-03",
+            "transaction_date": "2025-02-28",
+            "form_type": "4",
+            "accession_number": "0001062993-25-004146",
+            "year_month": "2025-02",
+            "days_since_filing": 11,
+            "transaction_type": "BUY",
+            "shares": 3000,
+            "price_per_share": 160.0,
+            "total_value": 480000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "MSFT",
+            "filing_date": "2025-03-03",
+            "transaction_date": "2025-02-28",
+            "form_type": "4",
+            "accession_number": "0001062993-25-004145",
+            "year_month": "2025-02",
+            "days_since_filing": 11,
+            "transaction_type": "SELL",
+            "shares": 4000,
+            "price_per_share": 165.0,
+            "total_value": 660000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "MSFT",
+            "filing_date": "2025-03-03",
+            "transaction_date": "2025-02-28",
+            "form_type": "4",
+            "accession_number": "0001062993-25-004144",
+            "year_month": "2025-02",
+            "days_since_filing": 11,
+            "transaction_type": "BUY",
+            "shares": 5000,
+            "price_per_share": 170.0,
+            "total_value": 850000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "filing_date": "2025-03-07",
+            "transaction_date": "2025-03-03",
+            "form_type": "4",
+            "accession_number": "0000950170-25-035576",
+            "year_month": "2025-03",
+            "days_since_filing": 8,
+            "transaction_type": "SELL",
+            "shares": 4000,
+            "price_per_share": 165.0,
+            "total_value": 660000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "filing_date": "2025-03-07",
+            "transaction_date": "2025-03-05",
+            "form_type": "4",
+            "accession_number": "0000950170-25-035624",
+            "year_month": "2025-03",
+            "days_since_filing": 6,
+            "transaction_type": "BUY",
+            "shares": 1000,
+            "price_per_share": 150.0,
+            "total_value": 150000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "filing_date": "2025-03-07",
+            "transaction_date": "2025-03-05",
+            "form_type": "4",
+            "accession_number": "0000950170-25-035608",
+            "year_month": "2025-03",
+            "days_since_filing": 6,
+            "transaction_type": "SELL",
+            "shares": 2000,
+            "price_per_share": 155.0,
+            "total_value": 310000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "filing_date": "2025-03-07",
+            "transaction_date": "2025-03-05",
+            "form_type": "4",
+            "accession_number": "0000950170-25-035587",
+            "year_month": "2025-03",
+            "days_since_filing": 6,
+            "transaction_type": "BUY",
+            "shares": 3000,
+            "price_per_share": 160.0,
+            "total_value": 480000.0,
+            "BUY": 0,
+            "SELL": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "filing_date": "2025-03-07",
+            "transaction_date": "2025-03-05",
+            "form_type": "4",
+            "accession_number": "0000950170-25-035540",
+            "year_month": "2025-03",
+            "days_since_filing": 6,
+            "transaction_type": "BUY",
+            "shares": 5000,
+            "price_per_share": 170.0,
+            "total_value": 850000.0,
+            "BUY": 0,
+            "SELL": 0
+        }
+    ],
+    "monthly_flow": [
+        {
+            "year_month": "2025-02",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "year_month": "2025-03",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        }
+    ],
+    "company_flow": [
+        {
+            "ticker": "AAPL",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "MSFT",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        }
+    ],
+    "company_monthly_flow": [
+        {
+            "ticker": "AAPL",
+            "year_month": "2025-02",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "year_month": "2025-03",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "MSFT",
+            "year_month": "2025-02",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        }
+    ],
+    "net_flow": [
+        {
+            "ticker": "AAPL",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "MSFT",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        }
+    ],
+    "cumulative_flow": [
+        {
+            "ticker": "AAPL",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "MSFT",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        }
+    ],
+    "trend_flow": [
+        {
+            "ticker": "AAPL",
+            "year_month": "2025-02",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "GOOGL",
+            "year_month": "2025-03",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        },
+        {
+            "ticker": "MSFT",
+            "year_month": "2025-02",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0
+        }
+    ],
+    "confidence": [
+        {
+            "ticker": "AAPL",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0,
+            "CONFIDENCE": NaN
+        },
+        {
+            "ticker": "GOOGL",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0,
+            "CONFIDENCE": NaN
+        },
+        {
+            "ticker": "MSFT",
+            "BUY": 0,
+            "SELL": 0,
+            "NET_FLOW": 0,
+            "CONFIDENCE": NaN
+        }
+    ],
+    "flow_summary": [
+        {
+            "ticker": "AAPL",
+            "report_date": "2025-03-11",
+            "filing_count": NaN,
+            "data_period": "2025-02-25 to 2025-03-05",
+            "BUY": 0.0,
+            "SELL": 0.0,
+            "NET_FLOW": 0.0,
+            "CONFIDENCE": NaN
+        },
+        {
+            "ticker": "GOOGL",
+            "report_date": "2025-03-11",
+            "filing_count": NaN,
+            "data_period": "2025-02-25 to 2025-03-05",
+            "BUY": 0.0,
+            "SELL": 0.0,
+            "NET_FLOW": 0.0,
+            "CONFIDENCE": NaN
+        },
+        {
+            "ticker": "MSFT",
+            "report_date": "2025-03-11",
+            "filing_count": NaN,
+            "data_period": "2025-02-25 to 2025-03-05",
+            "BUY": 0.0,
+            "SELL": 0.0,
+            "NET_FLOW": 0.0,
+            "CONFIDENCE": NaN
+        },
+        {
+            "ticker": NaN,
+            "report_date": "2025-03-11",
+            "filing_count": 5.0,
+            "data_period": "2025-02-25 to 2025-03-05",
+            "BUY": NaN,
+            "SELL": NaN,
+            "NET_FLOW": NaN,
+            "CONFIDENCE": NaN
+        },
+        {
+            "ticker": NaN,
+            "report_date": "2025-03-11",
+            "filing_count": 5.0,
+            "data_period": "2025-02-25 to 2025-03-05",
+            "BUY": NaN,
+            "SELL": NaN,
+            "NET_FLOW": NaN,
+            "CONFIDENCE": NaN
+        },
+        {
+            "ticker": NaN,
+            "report_date": "2025-03-11",
+            "filing_count": 5.0,
+            "data_period": "2025-02-25 to 2025-03-05",
+            "BUY": NaN,
+            "SELL": NaN,
+            "NET_FLOW": NaN,
+            "CONFIDENCE": NaN
+        }
+    ]
+}

@@ -1,78 +1,118 @@
 import os
-from datetime import datetime, timedelta
-import pandas as pd
+import argparse
+from datetime import datetime
 
-from utils.config import Config
-from utils.file_handler import FileHandler
-from taiwan_market.institutional_investors import TWInstitutionalInvestors
-from us_market.form4_collector import Form4Collector
-from us_market.sec_parser import SECParser
+from utils.api import InvestmentDataAPI
 
-def main():
+def main(args):
     try:
-        # 確保 SEC_EMAIL 環境變量已設置
-        if not Config.SEC_EMAIL:
-            os.environ['SEC_EMAIL'] = 'your-email@example.com'  # 使用適當的預設郵箱
-            Config.SEC_EMAIL = os.getenv('SEC_EMAIL')  # 重新讀取環境變量
-        
-        # 確保所有必要目錄存在
-        Config.ensure_directories()
-        
-        # 初始化文件處理器
-        file_handler = FileHandler()
+        # 初始化 API
+        api = InvestmentDataAPI(
+            email=args.email, 
+            keep_intermediate_files=args.keep_intermediate_files,
+            generate_json=not args.no_json
+        )
         
         # 抓取台股三大法人資料
-        tw_collector = TWInstitutionalInvestors()
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=7)  # 抓取最近一週資料
+        if args.collect_tw:
+            print(f"開始獲取台股三大法人資料 (最近 {args.days} 天)...")
+            api.get_tw_institutional_data(days=args.days)
         
-        tw_data = tw_collector.get_historical_data(start_date, end_date)
-        if tw_data is not None:
-            saved_path = file_handler.save_tw_data(tw_data, end_date)
-            print(f"台股三大法人資料已保存至: {saved_path}")
-        
-        # 抓取 Form 4 資料
-        form4_collector = Form4Collector(email="test123@gmail.com")
-        
-        tickers = ["AAPL", "MSFT", "GOOGL"]  # 示例股票
-        all_transactions = []
-        
-        print("開始獲取 Form 4 交易數據...")
-        for ticker in tickers:
-            print(f"處理 {ticker} 的 Form 4 交易數據:")
-            transactions_df = form4_collector.get_form4_transactions(ticker)
-            if transactions_df is not None:
-                print(f"{ticker} Form 4 資料獲取完成")
-                all_transactions.append(transactions_df)
-            else:
-                print(f"警告: {ticker} 的 Form 4 資料獲取失敗")
-        
-        if all_transactions:
-            # 合併所有交易數據
-            transactions_df = pd.concat(all_transactions, ignore_index=True)
-            
-            # 清理和組織數據
-            clean_df, monthly_stats = SECParser.clean_and_organize_data(transactions_df)
-            
-            # 保存清理後的數據
-            clean_output_file = os.path.join(
-                Config.US_MARKET_DIR, 
-                f"form4_transactions_clean_{datetime.now().strftime('%Y%m%d')}.csv"
+        # 抓取美股 Form 4 資料
+        if args.collect_us_form4:
+            print("開始獲取美股 Form 4 資料...")
+            form4_data = api.get_us_form4_data(
+                tickers=args.tickers,
+                num_filings=args.num_filings,
+                consolidated=True,  # 在抓取階段就生成綜合報告
+                only_keep_final_report=not args.keep_intermediate_files
             )
-            clean_df.to_csv(clean_output_file, index=False)
             
-            # 保存月度統計
-            monthly_output_file = os.path.join(
-                Config.US_MARKET_DIR, 
-                f"form4_monthly_stats_{datetime.now().strftime('%Y%m%d')}.csv"
+            # 如果指定了分析 Form 4 金流，則顯示分析結果
+            if args.analyze_form4_fund_flow and form4_data and 'fund_flow' in form4_data:
+                print("\n===== Form 4 金流分析結果 =====")
+                
+                # 顯示累計資金流向
+                if 'cumulative_flow' in form4_data['fund_flow'] and not form4_data['fund_flow']['cumulative_flow'].empty:
+                    print("\n累計資金流向:")
+                    print(form4_data['fund_flow']['cumulative_flow'])
+                
+                # 顯示內部人信心指標
+                if 'confidence' in form4_data['fund_flow'] and not form4_data['fund_flow']['confidence'].empty:
+                    print("\n內部人信心指標 (買入金額/賣出金額):")
+                    print(form4_data['fund_flow']['confidence'][['ticker', 'BUY', 'SELL', 'NET_FLOW', 'CONFIDENCE']])
+                
+                # 顯示最近變化
+                if 'recent_change' in form4_data['fund_flow'] and not form4_data['fund_flow']['recent_change'].empty:
+                    print("\n最近資金流向變化:")
+                    print(form4_data['fund_flow']['recent_change'])
+                
+                print("\n注意: 完整的金流分析結果已保存到 Excel 和 JSON 文件中")
+        
+        # 抓取美股資金流向資料
+        if args.collect_us_fund_flow:
+            print("開始獲取美股資金流向資料...")
+            api.get_us_fund_flow_data(
+                tickers=args.tickers,
+                days=args.days,
+                consolidated=True,  # 在抓取階段就生成綜合報告
+                only_keep_final_report=not args.keep_intermediate_files
             )
-            monthly_stats.to_csv(monthly_output_file, index=False)
+        
+        # 抓取美股綜合資料 (Form 4 + 資金流向)
+        if args.collect_us_comprehensive:
+            print("開始獲取美股綜合資料 (Form 4 + 資金流向)...")
+            api.get_us_comprehensive_data(
+                tickers=args.tickers,
+                days=args.days,
+                num_filings=args.num_filings,
+                only_keep_final_report=not args.keep_intermediate_files
+            )
+        
+        # 生成特定股票的摘要報告
+        if args.ticker_summary:
+            print(f"生成 {args.ticker or '所有股票'} 的摘要報告...")
+            api.get_ticker_summary(ticker=args.ticker)
+            
     except Exception as e:
         print(f"Error in main: {str(e)}")
         raise
 
 if __name__ == "__main__":
+    # 解析命令行參數
+    parser = argparse.ArgumentParser(description='投資數據收集與分析工具')
+    
+    # 資料收集參數
+    parser.add_argument('--collect-tw', action='store_true', help='收集台股三大法人資料')
+    parser.add_argument('--collect-us-form4', action='store_true', help='收集美股 Form 4 資料')
+    parser.add_argument('--collect-us-fund-flow', action='store_true', help='收集美股資金流向資料')
+    parser.add_argument('--collect-us-comprehensive', action='store_true', help='收集美股綜合資料 (Form 4 + 資金流向)')
+    parser.add_argument('--days', type=int, default=30, help='收集資料的天數範圍')
+    parser.add_argument('--tickers', nargs='+', help='要收集的美股股票代碼列表')
+    parser.add_argument('--num-filings', type=int, default=10, help='每個股票收集的 Form 4 文件數量')
+    parser.add_argument('--email', type=str, default='your-email@example.com', help='用於 SEC API 的電子郵件地址')
+    
+    # 分析參數
+    parser.add_argument('--analyze-form4-fund-flow', action='store_true', help='分析 Form 4 金流')
+    
+    # 報告生成參數
+    parser.add_argument('--ticker-summary', action='store_true', help='生成股票摘要報告')
+    parser.add_argument('--ticker', type=str, help='生成特定股票的摘要報告')
+    
+    # 文件管理參數
+    parser.add_argument('--keep-intermediate-files', action='store_true', help='保留中間文件，默認為 False')
+    parser.add_argument('--no-json', action='store_true', help='不生成 JSON 格式的報告，默認為 False')
+    
+    # 如果沒有參數，預設執行所有功能
+    args = parser.parse_args()
+    if not any([args.collect_tw, args.collect_us_form4, args.collect_us_fund_flow, 
+                args.collect_us_comprehensive, args.ticker_summary]):
+        args.collect_tw = True
+        args.collect_us_form4 = True
+        args.analyze_form4_fund_flow = True  # 預設分析 Form 4 金流
+        args.ticker_summary = True
+    
     try:
-        main()
+        main(args)
     except Exception as e:
         print(f"Program terminated with error: {str(e)}") 

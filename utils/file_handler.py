@@ -5,6 +5,7 @@ from datetime import datetime
 class FileHandler:
     def __init__(self, base_path="./data"):
         self.base_path = base_path
+        self.intermediate_files = []  # 初始化中間文件列表
         self._init_directories()
     
     def _init_directories(self):
@@ -34,4 +35,19 @@ class FileHandler:
             f"form4_{ticker}_{datetime.now().strftime('%Y%m%d')}.csv"
         )
         df.to_csv(file_path, index=False)
-        return file_path 
+        return file_path
+
+    def cleanup_intermediate_files(self):
+        """清理中间文件"""
+        if self.intermediate_files:
+            print(f"清理 {len(self.intermediate_files)} 个中间文件...")
+            for file_path in self.intermediate_files:
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        print(f"已删除: {file_path}")
+                except Exception as e:
+                    print(f"删除文件 {file_path} 时出错: {str(e)}")
+            
+            # 清空列表
+            self.intermediate_files = [] 

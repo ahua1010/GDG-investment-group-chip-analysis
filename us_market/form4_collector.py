@@ -66,7 +66,12 @@ class Form4Collector:
                     'filing_date': filing_dates[idx],
                     'transaction_date': report_dates[idx],
                     'form_type': form_types[idx],
-                    'accession_number': accession_numbers[idx]
+                    'accession_number': accession_numbers[idx],
+                    # 添加模擬的交易詳細信息，用於測試金流分析功能
+                    'transaction_type': 'BUY' if idx % 2 == 0 else 'SELL',  # 模擬買入/賣出
+                    'shares': 1000 * (idx + 1),  # 模擬股數
+                    'price_per_share': 150.0 + idx * 5.0,  # 模擬價格
+                    'total_value': (1000 * (idx + 1)) * (150.0 + idx * 5.0)  # 模擬總值
                 }
                 transactions.append(trans_data)
             

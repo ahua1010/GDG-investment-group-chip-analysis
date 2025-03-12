@@ -1,8 +1,21 @@
 import os
 import xml.etree.ElementTree as ET
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from bs4 import BeautifulSoup
+import json
+from utils.config import Config
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if pd.isna(obj):
+            return None
+        if isinstance(obj, pd.Timestamp):
+            return obj.strftime('%Y-%m-%d')
+        if isinstance(obj, datetime):
+            return obj.strftime('%Y-%m-%d')
+        return super().default(obj)
 
 class SECParser:
     @staticmethod
@@ -163,8 +176,23 @@ class SECParser:
                 'form_type',
                 'accession_number',
                 'year_month',
-                'days_since_filing'
+                'days_since_filing',
+                'transaction_type',
+                'shares',
+                'price_per_share',
+                'total_value',
+                'BUY',
+                'SELL'
             ]
+            
+            # 確保所有需要的列都存在
+            for col in final_columns:
+                if col not in df.columns:
+                    if col in ['BUY', 'SELL']:
+                        df[col] = 0
+                    else:
+                        df[col] = None
+            
             clean_df = df[final_columns].copy()
             
             print("\nMonthly Filing Statistics:")
@@ -174,4 +202,353 @@ class SECParser:
             
         except Exception as e:
             print(f"Error cleaning data: {str(e)}")
-            return None, None 
+            return None, None
+    
+    @staticmethod
+    def analyze_form4_fund_flow(df):
+        """分析 Form 4 資金流向
+        
+        Args:
+            df: Form 4 交易數據框
+            
+        Returns:
+            dict: 包含各種資金流向分析的字典
+        """
+        try:
+            if df is None or df.empty:
+                print("沒有 Form 4 交易數據可供分析")
+                return None
+            
+            # 確保必要的欄位存在
+            required_columns = ['ticker', 'transaction_date', 'transaction_type', 'shares', 'price_per_share', 'total_value']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                print(f"缺少必要的欄位: {missing_columns}")
+                
+                # 如果缺少 total_value，但有 shares 和 price_per_share，則計算 total_value
+                if 'total_value' in missing_columns and 'shares' in df.columns and 'price_per_share' in df.columns:
+                    df['total_value'] = df['shares'] * df['price_per_share']
+                    missing_columns.remove('total_value')
+                
+                # 如果缺少 transaction_type，但有 transaction_code，則判斷買入還是賣出
+                if 'transaction_type' in missing_columns and 'transaction_code' in df.columns:
+                    df['transaction_type'] = df['transaction_code'].apply(
+                        lambda x: 'BUY' if x in ['P', 'J'] else 'SELL'
+                    )
+                    missing_columns.remove('transaction_type')
+                
+                if missing_columns:
+                    print(f"無法繼續分析，仍然缺少必要的欄位: {missing_columns}")
+                    return None
+            
+            # 確保日期欄位是日期類型
+            df['transaction_date'] = pd.to_datetime(df['transaction_date'])
+            
+            # 添加年月欄位
+            if 'year_month' not in df.columns:
+                df['year_month'] = df['transaction_date'].dt.strftime('%Y-%m')
+            
+            # 1. 按公司和交易類型分析資金流向
+            company_flow = df.groupby(['ticker', 'transaction_type']).agg({
+                'total_value': 'sum',
+                'shares': 'sum'
+            }).reset_index()
+            
+            # 2. 按月份分析資金流向
+            monthly_flow = df.groupby(['year_month', 'transaction_type']).agg({
+                'total_value': 'sum',
+                'shares': 'sum'
+            }).reset_index()
+            
+            # 3. 按公司和月份分析資金流向
+            company_monthly_flow = df.groupby(['ticker', 'year_month', 'transaction_type']).agg({
+                'total_value': 'sum',
+                'shares': 'sum'
+            }).reset_index()
+            
+            # 4. 計算淨資金流向 (買入 - 賣出)
+            # 創建透視表，按公司和月份分組，計算買入和賣出的總值
+            pivot_df = pd.pivot_table(
+                df, 
+                values='total_value', 
+                index=['ticker', 'year_month'], 
+                columns='transaction_type', 
+                aggfunc='sum',
+                fill_value=0
+            ).reset_index()
+            
+            # 確保 BUY 和 SELL 列存在
+            if 'BUY' not in pivot_df.columns:
+                pivot_df['BUY'] = 0
+            if 'SELL' not in pivot_df.columns:
+                pivot_df['SELL'] = 0
+            
+            # 計算淨資金流向
+            pivot_df['NET_FLOW'] = pivot_df['BUY'] - pivot_df['SELL']
+            
+            # 5. 計算累計資金流向
+            cumulative_flow = pivot_df.groupby('ticker').agg({
+                'BUY': 'sum',
+                'SELL': 'sum',
+                'NET_FLOW': 'sum'
+            }).reset_index()
+            
+            # 6. 計算每個公司的資金流向趨勢
+            # 按公司和日期排序
+            trend_df = df.sort_values(['ticker', 'transaction_date'])
+            
+            # 按公司分組，計算累計資金流向
+            trend_data = []
+            for ticker, group in trend_df.groupby('ticker'):
+                # 按日期排序
+                group = group.sort_values('transaction_date')
+                
+                # 計算每筆交易的資金流向 (買入為正，賣出為負)
+                group['flow_value'] = group.apply(
+                    lambda row: row['total_value'] if row['transaction_type'] == 'BUY' else -row['total_value'],
+                    axis=1
+                )
+                
+                # 計算累計資金流向
+                group['cumulative_flow'] = group['flow_value'].cumsum()
+                
+                # 添加到結果中
+                trend_data.append(group[['ticker', 'transaction_date', 'flow_value', 'cumulative_flow']])
+            
+            if trend_data:
+                trend_df = pd.concat(trend_data, ignore_index=True)
+            else:
+                trend_df = pd.DataFrame()
+            
+            # 7. 計算內部人信心指標 (買入金額 / 賣出金額)
+            confidence_df = cumulative_flow.copy()
+            confidence_df['CONFIDENCE'] = np.where(
+                confidence_df['SELL'] == 0,
+                float('inf'),  # 避免除以零
+                confidence_df['BUY'] / confidence_df['SELL']
+            )
+            
+            # 8. 計算最近一個月的資金流向變化
+            recent_months = sorted(df['year_month'].unique())[-2:] if len(df['year_month'].unique()) >= 2 else df['year_month'].unique()
+            recent_flow = pivot_df[pivot_df['year_month'].isin(recent_months)].copy()
+            
+            if len(recent_months) >= 2:
+                # 計算最近兩個月的資金流向變化
+                recent_pivot = pd.pivot_table(
+                    recent_flow,
+                    values='NET_FLOW',
+                    index='ticker',
+                    columns='year_month',
+                    aggfunc='sum',
+                    fill_value=0
+                ).reset_index()
+                
+                # 計算變化率
+                recent_pivot['CHANGE'] = recent_pivot[recent_months[1]] - recent_pivot[recent_months[0]]
+                recent_pivot['CHANGE_PCT'] = np.where(
+                    recent_pivot[recent_months[0]] == 0,
+                    float('inf'),
+                    recent_pivot['CHANGE'] / recent_pivot[recent_months[0]] * 100
+                )
+                
+                recent_change = recent_pivot[['ticker', 'CHANGE', 'CHANGE_PCT']]
+            else:
+                recent_change = pd.DataFrame()
+            
+            return {
+                'company_flow': company_flow,
+                'monthly_flow': monthly_flow,
+                'company_monthly_flow': company_monthly_flow,
+                'net_flow': pivot_df,
+                'cumulative_flow': cumulative_flow,
+                'trend_flow': trend_df,
+                'confidence': confidence_df,
+                'recent_change': recent_change
+            }
+            
+        except Exception as e:
+            print(f"分析 Form 4 資金流向時出錯: {str(e)}")
+            return None 
+
+    def analyze_fund_flow(self, transactions_df, save_file=True):
+        """分析资金流向
+        
+        Args:
+            transactions_df: 交易数据 DataFrame
+            save_file: 是否保存文件
+            
+        Returns:
+            dict: 资金流向分析结果
+        """
+        try:
+            # 获取当前时间戳
+            timestamp = datetime.now().strftime('%Y%m%d')
+            
+            # 按公司统计资金流向
+            company_flow = transactions_df.groupby('ticker').agg({
+                'BUY': 'sum',
+                'SELL': 'sum'
+            }).reset_index()
+            company_flow['NET_FLOW'] = company_flow['BUY'] - company_flow['SELL']
+            
+            # 按月统计资金流向
+            monthly_flow = transactions_df.groupby(['year_month']).agg({
+                'BUY': 'sum',
+                'SELL': 'sum'
+            }).reset_index()
+            monthly_flow['NET_FLOW'] = monthly_flow['BUY'] - monthly_flow['SELL']
+            
+            # 按公司和月份统计资金流向
+            company_monthly_flow = transactions_df.groupby(['ticker', 'year_month']).agg({
+                'BUY': 'sum',
+                'SELL': 'sum'
+            }).reset_index()
+            company_monthly_flow['NET_FLOW'] = company_monthly_flow['BUY'] - company_monthly_flow['SELL']
+            
+            # 计算净资金流向
+            net_flow = company_flow.copy()
+            
+            # 计算累积资金流向
+            cumulative_flow = company_flow.copy()
+            
+            # 计算趋势资金流向
+            trend_flow = company_monthly_flow.copy()
+            
+            # 计算信心指标
+            confidence = company_flow.copy()
+            confidence['CONFIDENCE'] = confidence['BUY'] / confidence['SELL']
+            
+            # 保存分析结果
+            if save_file:
+                # 保存公司资金流向
+                company_flow_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_fund_flow_company_flow_{timestamp}.csv"
+                )
+                company_flow.to_csv(company_flow_file, index=False)
+                print(f"Form 4 company_flow 金流分析已保存至: {company_flow_file}")
+                
+                # 保存月度资金流向
+                monthly_flow_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_fund_flow_monthly_flow_{timestamp}.csv"
+                )
+                monthly_flow.to_csv(monthly_flow_file, index=False)
+                print(f"Form 4 monthly_flow 金流分析已保存至: {monthly_flow_file}")
+                
+                # 保存公司月度资金流向
+                company_monthly_flow_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_fund_flow_company_monthly_flow_{timestamp}.csv"
+                )
+                company_monthly_flow.to_csv(company_monthly_flow_file, index=False)
+                print(f"Form 4 company_monthly_flow 金流分析已保存至: {company_monthly_flow_file}")
+                
+                # 保存净资金流向
+                net_flow_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_fund_flow_net_flow_{timestamp}.csv"
+                )
+                net_flow.to_csv(net_flow_file, index=False)
+                print(f"Form 4 net_flow 金流分析已保存至: {net_flow_file}")
+                
+                # 保存累积资金流向
+                cumulative_flow_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_fund_flow_cumulative_flow_{timestamp}.csv"
+                )
+                cumulative_flow.to_csv(cumulative_flow_file, index=False)
+                print(f"Form 4 cumulative_flow 金流分析已保存至: {cumulative_flow_file}")
+                
+                # 保存趋势资金流向
+                trend_flow_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_fund_flow_trend_flow_{timestamp}.csv"
+                )
+                trend_flow.to_csv(trend_flow_file, index=False)
+                print(f"Form 4 trend_flow 金流分析已保存至: {trend_flow_file}")
+                
+                # 保存信心指标
+                confidence_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_fund_flow_confidence_{timestamp}.csv"
+                )
+                confidence.to_csv(confidence_file, index=False)
+                print(f"Form 4 confidence 金流分析已保存至: {confidence_file}")
+                
+                # 创建资金流向摘要
+                flow_summary = pd.DataFrame({
+                    'ticker': company_flow['ticker'],
+                    'report_date': datetime.now().strftime('%Y-%m-%d'),
+                    'filing_count': transactions_df.groupby('ticker').size(),
+                    'data_period': f"{min(transactions_df['transaction_date']).strftime('%Y-%m-%d')} to {max(transactions_df['transaction_date']).strftime('%Y-%m-%d')}",
+                    'BUY': company_flow['BUY'],
+                    'SELL': company_flow['SELL'],
+                    'NET_FLOW': company_flow['NET_FLOW'],
+                    'CONFIDENCE': confidence['CONFIDENCE']
+                })
+                
+                # 保存资金流向摘要
+                flow_summary_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_fund_flow_summary_{timestamp}.csv"
+                )
+                flow_summary.to_csv(flow_summary_file, index=False)
+                print(f"Form 4 资金流向摘要已保存至: {flow_summary_file}")
+                
+                # 创建综合报告
+                report_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_consolidated_report_{timestamp}.xlsx"
+                )
+                
+                with pd.ExcelWriter(report_file) as writer:
+                    transactions_df.to_excel(writer, sheet_name='交易明细', index=False)
+                    monthly_flow.to_excel(writer, sheet_name='月度统计', index=False)
+                    company_flow.to_excel(writer, sheet_name='公司资金流向', index=False)
+                    company_monthly_flow.to_excel(writer, sheet_name='公司月度资金流向', index=False)
+                    net_flow.to_excel(writer, sheet_name='净资金流向', index=False)
+                    cumulative_flow.to_excel(writer, sheet_name='累积资金流向', index=False)
+                    trend_flow.to_excel(writer, sheet_name='趋势资金流向', index=False)
+                    confidence.to_excel(writer, sheet_name='信心指标', index=False)
+                    flow_summary.to_excel(writer, sheet_name='资金流向摘要', index=False)
+                
+                print(f"综合报告已保存至: {report_file}")
+                
+                # 创建 JSON 格式报告
+                json_data = {
+                    'transactions': transactions_df.to_dict(orient='records'),
+                    'monthly_flow': monthly_flow.to_dict(orient='records'),
+                    'company_flow': company_flow.to_dict(orient='records'),
+                    'company_monthly_flow': company_monthly_flow.to_dict(orient='records'),
+                    'net_flow': net_flow.to_dict(orient='records'),
+                    'cumulative_flow': cumulative_flow.to_dict(orient='records'),
+                    'trend_flow': trend_flow.to_dict(orient='records'),
+                    'confidence': confidence.to_dict(orient='records'),
+                    'flow_summary': flow_summary.to_dict(orient='records')
+                }
+                
+                json_file = os.path.join(
+                    Config.US_MARKET_DIR,
+                    f"form4_consolidated_report_{timestamp}.json"
+                )
+                
+                with open(json_file, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, ensure_ascii=False, indent=4, cls=CustomJSONEncoder)
+                
+                print(f"JSON 格式报告已保存至: {json_file}")
+            
+            return {
+                'company_flow': company_flow,
+                'monthly_flow': monthly_flow,
+                'company_monthly_flow': company_monthly_flow,
+                'net_flow': net_flow,
+                'cumulative_flow': cumulative_flow,
+                'trend_flow': trend_flow,
+                'confidence': confidence
+            }
+            
+        except Exception as e:
+            print(f"分析资金流向时出错: {str(e)}")
+            return None 
